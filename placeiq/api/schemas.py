@@ -1,0 +1,69 @@
+from __future__ import annotations
+
+from datetime import date
+
+from pydantic import BaseModel, Field, field_validator
+
+from placeiq.extraction.skills import load_taxonomy
+
+
+def _clean_skills(v: list[str]) -> list[str]:
+    v = sorted({s.strip().lower() for s in v if s.strip()})
+    unknown = [s for s in v if s not in load_taxonomy()]
+    if unknown:
+        raise ValueError(f"Not in taxonomy: {unknown}")
+    return v
+
+
+class Profile(BaseModel):
+    """A student profile *after* the student has reviewed the parsed draft."""
+    branch: str = Field(min_length=2, max_length=16)
+    cgpa: float = Field(ge=0, le=10)
+    active_backlogs: int = Field(ge=0, le=30)
+    internships: int = Field(ge=0, le=20)
+    projects: int = Field(ge=0, le=30)
+    certifications: int = Field(ge=0, le=50)
+    skills: list[str] = Field(default_factory=list, max_length=200)
+
+    @field_validator("branch")
+    @classmethod
+    def upper_branch(cls, v: str) -> str:
+        return v.strip().upper()
+
+    @field_validator("skills")
+    @classmethod
+    def skills_in_taxonomy(cls, v: list[str]) -> list[str]:
+        return _clean_skills(v)
+
+
+class CvText(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+
+
+class ScoreRequest(BaseModel):
+    profiles: list[Profile] = Field(min_length=1, max_length=50)
+
+
+class CohortRequest(BaseModel):
+    profiles: list[Profile] = Field(max_length=5000)
+
+
+class StudentKey(BaseModel):
+    roll_number: str = Field(min_length=3, max_length=40)
+    batch_year: int = Field(ge=2000, le=date.today().year + 6)
+
+
+class StudentSave(StudentKey):
+    consent: bool
+    profile: Profile
+
+
+class AnnotationIn(BaseModel):
+    text: str = Field(min_length=20, max_length=50_000)
+    gold_skills: list[str] = Field(default_factory=list, max_length=300)
+    annotator: str = Field(default="", max_length=32)
+
+    @field_validator("gold_skills")
+    @classmethod
+    def gold_in_taxonomy(cls, v: list[str]) -> list[str]:
+        return _clean_skills(v)

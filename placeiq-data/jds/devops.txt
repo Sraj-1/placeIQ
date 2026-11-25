@@ -1,0 +1,5 @@
+DevOps / Cloud Engineer (Associate)
+Automate build, deployment and monitoring of cloud infrastructure.
+Requirements: Linux, shell scripting with Bash, Python; Docker and Kubernetes; CI/CD with Jenkins or GitHub Actions.
+Cloud experience with AWS, Azure or GCP. Infrastructure as code using Terraform or Ansible.
+Monitoring with Prometheus and Grafana; networking fundamentals; Git.

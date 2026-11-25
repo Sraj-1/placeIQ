@@ -1,0 +1,5 @@
+Frontend Developer (Fresher)
+Develop responsive, accessible user interfaces for our web products.
+Requirements: HTML, CSS, JavaScript, TypeScript, React; state management with Redux.
+Experience consuming REST APIs, using Git, and building with Webpack or Vite. Tailwind CSS or Bootstrap.
+Understanding of UI/UX design, web performance and testing with Jest is a plus. Node.js knowledge preferred.

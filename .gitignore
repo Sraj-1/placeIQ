@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.env
+# Personal and generated data: only templates, configs and READMEs are tracked
+placeiq-data/placeiq.db
+placeiq-data/placeiq.db-journal
+placeiq-data/raw/*
+placeiq-data/processed/*
+placeiq-data/synthetic/*
+placeiq-data/artifacts/*
+placeiq-data/student/*
+!placeiq-data/**/.gitkeep
+web/node_modules/
+web/.next/

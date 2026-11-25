@@ -1,0 +1,5 @@
+Machine Learning Engineer (Graduate)
+Build, train and deploy machine learning models for production use.
+Requirements: Python, scikit-learn, pandas, numpy; deep learning with TensorFlow or PyTorch.
+Experience with NLP or computer vision projects, feature engineering and model evaluation.
+Familiarity with SQL, Git, Docker, MLOps and cloud platforms. Knowledge of statistics and linear algebra.

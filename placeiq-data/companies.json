@@ -1,0 +1,20 @@
+{
+  "_note": "Fifteen PLACEHOLDER recruiter profiles, one per typical campus-drive archetype, so the eligibility filter is fully exercised. Before real use, replace each with an actual recruiter from the placement cell's past drives, taking criteria from its eligibility notice (synopsis section 4.9). Fields: min_cgpa (0-10), max_active_backlogs, branches (empty list = all), required_skills_any (empty = none; otherwise at least one, canonical taxonomy names).",
+  "companies": [
+    {"name": "Recruiter 01 - IT services, mass hiring", "min_cgpa": 6.0, "max_active_backlogs": 0, "branches": [], "required_skills_any": []},
+    {"name": "Recruiter 02 - IT services, digital role", "min_cgpa": 7.0, "max_active_backlogs": 0, "branches": ["CSE", "IT", "ECE", "EEE"], "required_skills_any": ["java", "python", "c++", "javascript"]},
+    {"name": "Recruiter 03 - consulting / analyst", "min_cgpa": 6.5, "max_active_backlogs": 1, "branches": [], "required_skills_any": []},
+    {"name": "Recruiter 04 - product company, SDE", "min_cgpa": 7.5, "max_active_backlogs": 0, "branches": ["CSE", "IT"], "required_skills_any": ["data structures", "algorithms"]},
+    {"name": "Recruiter 05 - product company, SDE (dream)", "min_cgpa": 8.0, "max_active_backlogs": 0, "branches": ["CSE", "IT", "ECE"], "required_skills_any": ["data structures", "competitive programming"]},
+    {"name": "Recruiter 06 - fintech, backend", "min_cgpa": 7.0, "max_active_backlogs": 0, "branches": ["CSE", "IT"], "required_skills_any": ["java", "spring boot", "sql"]},
+    {"name": "Recruiter 07 - data analytics", "min_cgpa": 7.0, "max_active_backlogs": 1, "branches": ["CSE", "IT", "ECE"], "required_skills_any": ["python", "sql", "excel", "power bi"]},
+    {"name": "Recruiter 08 - AI / ML startup", "min_cgpa": 7.0, "max_active_backlogs": 0, "branches": ["CSE", "IT"], "required_skills_any": ["machine learning", "deep learning", "pytorch", "tensorflow"]},
+    {"name": "Recruiter 09 - web agency, frontend", "min_cgpa": 6.0, "max_active_backlogs": 1, "branches": [], "required_skills_any": ["react", "javascript", "html"]},
+    {"name": "Recruiter 10 - cloud / DevOps", "min_cgpa": 6.5, "max_active_backlogs": 0, "branches": ["CSE", "IT", "ECE"], "required_skills_any": ["aws", "docker", "linux", "kubernetes"]},
+    {"name": "Recruiter 11 - semiconductor / VLSI", "min_cgpa": 7.0, "max_active_backlogs": 0, "branches": ["ECE", "EEE"], "required_skills_any": ["verilog", "vlsi", "fpga"]},
+    {"name": "Recruiter 12 - embedded / IoT", "min_cgpa": 6.5, "max_active_backlogs": 0, "branches": ["ECE", "EEE", "CSE"], "required_skills_any": ["embedded systems", "c", "microcontrollers", "arduino"]},
+    {"name": "Recruiter 13 - core mechanical / design", "min_cgpa": 6.5, "max_active_backlogs": 0, "branches": ["ME"], "required_skills_any": ["autocad", "solidworks", "catia", "ansys"]},
+    {"name": "Recruiter 14 - QA / test automation", "min_cgpa": 6.0, "max_active_backlogs": 1, "branches": [], "required_skills_any": ["selenium", "manual testing", "automation testing", "java"]},
+    {"name": "Recruiter 15 - cybersecurity", "min_cgpa": 7.0, "max_active_backlogs": 0, "branches": ["CSE", "IT"], "required_skills_any": ["cybersecurity", "network security", "penetration testing", "linux"]}
+  ]
+}

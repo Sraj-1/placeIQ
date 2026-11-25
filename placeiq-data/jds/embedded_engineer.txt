@@ -1,0 +1,5 @@
+Embedded Systems Engineer (Graduate Trainee)
+Design and test firmware for microcontroller-based products.
+Requirements: C and C++ programming, embedded systems, microcontrollers (ARM, AVR, ESP32), Arduino or Raspberry Pi.
+Knowledge of IoT protocols, PCB design basics, signal processing and MATLAB. Verilog or VLSI exposure is a plus.
+Debugging with Linux tools and version control using Git.

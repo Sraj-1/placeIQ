@@ -1,0 +1,6 @@
+Software Development Engineer (Graduate)
+We are hiring graduate software engineers to build and maintain backend services and web applications.
+Requirements: strong data structures and algorithms, object oriented programming, proficiency in Java, Python or C++.
+Experience with REST APIs, SQL databases such as MySQL or PostgreSQL, Git and Linux.
+Good understanding of operating systems, DBMS and computer networks. Exposure to system design, Docker or cloud (AWS) is a plus.
+Competitive programming experience and internships are valued.

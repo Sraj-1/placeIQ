@@ -1,0 +1,3 @@
+student_hash,batch_year,branch,cgpa,active_backlogs,internships,projects,certifications,skills,rounds_cleared,placed
+3f9a1c...,2025,CSE,8.2,0,1,3,2,python;sql;react;git,4,1
+b71e0d...,2025,IT,6.9,1,0,2,0,java;html;css,1,0

@@ -1,0 +1,6 @@
+# Keep Linux line endings for everything the container runs, whatever the local git settings.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.woff2 binary
+*.png binary
+*.pdf binary

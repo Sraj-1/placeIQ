@@ -1,0 +1,27 @@
+# Core (everything needed to run PlaceIQ locally)
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+scipy>=1.11
+shap>=0.45
+joblib>=1.3
+matplotlib>=3.8
+
+# Resume ingestion and skill extraction
+pdfplumber>=0.11
+rapidfuzz>=3.6
+
+# Similarity baseline (TF-IDF is in scikit-learn). The SBERT model (~90 MB) is downloaded
+# once on first use and cached; without it the baseline falls back to TF-IDF + skill overlap.
+sentence-transformers>=2.7
+
+# API, storage and settings
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+pydantic>=2.6
+sqlalchemy>=2.0
+python-dotenv>=1.0
+
+# Optional: PostgreSQL instead of the default SQLite file
+# psycopg[binary]>=3.1

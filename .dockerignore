@@ -1,0 +1,16 @@
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.env
+web/node_modules
+web/.next
+placeiq-data/placeiq.db
+placeiq-data/artifacts/*
+placeiq-data/synthetic/*
+placeiq-data/raw/*
+placeiq-data/processed/*
+placeiq-data/student/*
+notebooks
+tests
+start.bat

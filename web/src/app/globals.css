@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* Dark mode is a class on <html>, set before paint by the theme script in layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PlaceIQ design tokens. The visual language follows career-ops' web app
+   (warm neutrals, burnt-orange accent, serif display headings) so the two feel
+   like one family. Text colours meet WCAG AA (4.5:1) on their surfaces.
+   ───────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-brand: hsl(26 73% 51%);
+  --color-brand-hover: hsl(30 90% 58%);
+  --color-brand-foreground: hsl(24 30% 12%);
+  --color-brand-soft: hsl(26 73% 51% / 0.12);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-foreground: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-headline: var(--headline);
+  --color-brand-text: var(--brand-text);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+}
+
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-hover: #efeeea;
+  --border: hsl(40 9% 86%);
+  --fg: hsl(30 10% 11%);
+  --muted: hsl(35 9% 34%);
+  --faint: hsl(35 7% 42%);
+  --headline: #59592a;
+  --brand-text: hsl(26 80% 36%);
+  --good: #065f46;
+  --warn: #92400e;
+  --bad: #b91c1c;
+  /* Diverging chart colours (raises / lowers), checked for colour-blind separation. */
+  --pos: #2a78d6;
+  --neg: #e34948;
+  --dot: 40 8% 42% / 0.09;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --surface-hover: #232323;
+  --border: #262626;
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --faint: #8b8b95;
+  --headline: #e4e2d0;
+  --brand-text: hsl(26 73% 51%);
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --pos: #3987e5;
+  --neg: #e66767;
+  --dot: 240 5% 65% / 0.1;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+html {
+  scrollbar-gutter: stable;
+}
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+@layer utilities {
+  .dot-bg {
+    background-image: radial-gradient(circle, hsl(var(--dot)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

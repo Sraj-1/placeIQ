@@ -1,0 +1,5 @@
+Data Analyst (Campus Hire)
+Analyse business data to produce insights and dashboards for stakeholders.
+Requirements: SQL, Excel, Python with pandas and numpy, data visualization using Power BI or Tableau.
+Understanding of statistics, hypothesis testing and exploratory data analysis. Data cleaning and reporting.
+Good communication skills. Knowledge of machine learning basics is a plus.
