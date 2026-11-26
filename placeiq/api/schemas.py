@@ -120,6 +120,28 @@ class JobIn(BaseModel):
         return sorted(set(v))
 
 
+class JobFeedRequest(BaseModel):
+    """The student's saved profile (it lives in their browser), used to score each job."""
+    profile: Profile | None = None
+    batch_year: int | None = Field(default=None, ge=2000, le=date.today().year + 6)
+
+
+class ApplicationIn(BaseModel):
+    """What a student submits when applying (with their consent)."""
+    name: str = Field(min_length=2, max_length=80)
+    email: str = Field(max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    phone: str = Field(pattern=r"^\+?[0-9][0-9 \-]{8,18}[0-9]$")
+    roll_number: str = Field(min_length=3, max_length=40)
+    batch_year: int | None = Field(default=None, ge=2000, le=date.today().year + 6)
+    consent: bool
+    profile: Profile
+
+    @field_validator("name", "email", "phone", "roll_number", mode="before")
+    @classmethod
+    def strip(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+
 class AnnotationIn(BaseModel):
     text: str = Field(min_length=20, max_length=50_000)
     gold_skills: list[str] = Field(default_factory=list, max_length=300)

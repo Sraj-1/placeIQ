@@ -24,6 +24,7 @@ from datetime import date, timezone
 
 import pandas as pd
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from pydantic import ValidationError
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import func, select
@@ -31,11 +32,11 @@ from sqlalchemy.orm import Session
 
 from placeiq import config
 from placeiq.accounts import MIN_PASSWORD, burn_time, hash_password, verify_password
-from placeiq.api.schemas import (AnnotationIn, CohortRequest, Credentials, CvText, JobIn, Profile, RollNumber,
-                                 ScoreRequest, StudentKey, StudentSave)
+from placeiq.api.schemas import (AnnotationIn, ApplicationIn, CohortRequest, Credentials, CvText, JobFeedRequest, JobIn,
+                                 Profile, RollNumber, ScoreRequest, StudentKey, StudentSave)
 from placeiq.cohort import primary_gaps, summarize
 from placeiq.data.anonymize import hash_identifier, strip_contact_info
-from placeiq.db import Annotation, Job, StudentAccount, StudentRecord, _now, get_session
+from placeiq.db import Annotation, Application, Job, SavedJob, StudentAccount, StudentRecord, _now, get_session
 from placeiq.eligibility.filter import eligible_companies, load_companies
 from placeiq.explain.guidance import load_bundle, report
 from placeiq.explain.whatif import score, suggestions
@@ -43,6 +44,7 @@ from placeiq.extraction import evaluate as extraction_eval
 from placeiq.extraction.pdf_text import extract_text
 from placeiq.extraction.profile import draft_profile
 from placeiq.extraction.skills import extract_skill_matches, load_taxonomy
+from placeiq.jobs import match as job_match
 from placeiq.roadmap import roadmap
 
 MODEL_PATH = config.MODEL_PATH
@@ -243,6 +245,93 @@ def withdraw_student(body: StudentKey, db: Session = Depends(get_session),
     return {"deleted": True}
 
 
+# ---------------------------------------------------------------- job finder (students)
+# The web app sends the signed-in student's roll-number hash in X-PlaceIQ-Student; every
+# route here needs it, since saved jobs and applications belong to that student.
+def _student(x_placeiq_student: str | None = Header(default=None)) -> str:
+    if not x_placeiq_student:
+        raise HTTPException(401, "Sign in as a student to use the Job Finder.")
+    return x_placeiq_student
+
+
+@api.post("/jobs/feed")
+def job_feed(body: JobFeedRequest, me: str = Depends(_student), db: Session = Depends(get_session)):
+    """Jobs open for applications, each scored against the student's profile (if they have one),
+    plus whether they saved it and the status of their application to it."""
+    today = date.today()
+    saved = set(db.scalars(select(SavedJob.job_id).where(SavedJob.student_hash == me)))
+    applied = dict(db.execute(select(Application.job_id, Application.status)
+                              .where(Application.student_hash == me)).all())
+    profile = body.profile.model_dump() if body.profile else None
+    out = []
+    for job in db.scalars(select(Job).order_by(Job.created_at.desc())):
+        if not job.accepting(today) and job.id not in applied:
+            continue
+        d = job.to_dict()
+        out.append({**d, "accepting": job.accepting(today), "posted_at": _iso(job.created_at),
+                    "match": job_match(d, profile, body.batch_year) if profile else None,
+                    "saved": job.id in saved, "application_status": applied.get(job.id)})
+    return out
+
+
+@api.post("/jobs/{job_id}/save")
+def save_job(job_id: int, me: str = Depends(_student), db: Session = Depends(get_session)):
+    _job_or_404(db, job_id)
+    if db.scalar(select(SavedJob).where(SavedJob.student_hash == me, SavedJob.job_id == job_id)) is None:
+        db.add(SavedJob(student_hash=me, job_id=job_id))
+        db.commit()
+    return {"saved": True}
+
+
+@api.delete("/jobs/{job_id}/save")
+def unsave_job(job_id: int, me: str = Depends(_student), db: Session = Depends(get_session)):
+    row = db.scalar(select(SavedJob).where(SavedJob.student_hash == me, SavedJob.job_id == job_id))
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return {"saved": False}
+
+
+@api.post("/jobs/{job_id}/apply")
+async def apply_job(job_id: int, data: str = Form(...), cv: UploadFile | None = File(default=None),
+                    me: str = Depends(_student), db: Session = Depends(get_session)):
+    """Apply with name, contact details, the profile snapshot and an optional CV PDF.
+    `data` is the ApplicationIn JSON (multipart, so the CV can ride along)."""
+    try:
+        body = ApplicationIn.model_validate_json(data)
+    except ValidationError as exc:
+        raise HTTPException(422, [{"loc": ["body", *e["loc"]], "msg": e["msg"]} for e in exc.errors()]) from exc
+    if not body.consent:
+        raise HTTPException(400, "Tick the consent box to send your application.")
+    _own_hash(body.roll_number, me)
+    job = _job_or_404(db, job_id)
+    if not job.accepting(date.today()):
+        raise HTTPException(409, "This job is no longer accepting applications.")
+    if db.scalar(select(Application).where(Application.job_id == job_id, Application.student_hash == me)):
+        raise HTTPException(409, "You've already applied to this job.")
+    profile = body.profile.model_dump()
+    m = job_match(job.to_dict(), profile, body.batch_year)
+    if m["band"] == "not_eligible":
+        raise HTTPException(403, "You don't meet this job's eligibility rules: " + "; ".join(m["reasons"]))
+
+    cv_name, cv_bytes = None, None
+    if cv is not None and cv.filename:
+        cv_bytes = await cv.read()
+        if len(cv_bytes) > MAX_PDF_BYTES:
+            raise HTTPException(413, "CV larger than 5 MB.")
+        if not cv_bytes.startswith(b"%PDF"):
+            raise HTTPException(415, "The CV must be a PDF.")
+        cv_name = re.sub(r"[^A-Za-z0-9._ -]", "_", cv.filename)[-120:]
+
+    db.add(Application(
+        job_id=job_id, student_hash=me, roll_number=body.roll_number.upper(), name=body.name, email=body.email,
+        phone=body.phone, batch_year=body.batch_year, skills=";".join(profile["skills"]), match_score=m["score"],
+        cv_filename=cv_name, cv_data=cv_bytes,
+        **{k: profile[k] for k in ("branch", "cgpa", "active_backlogs", "internships", "projects", "certifications")}))
+    db.commit()
+    return {"applied": True, "status": "applied", "match": m}
+
+
 # ---------------------------------------------------------------- admin
 admin = APIRouter(prefix="/admin")
 
@@ -404,7 +493,14 @@ def update_job(job_id: int, body: JobIn, db: Session = Depends(get_session)):
 
 @admin.delete("/jobs/{job_id}")
 def delete_job(job_id: int, db: Session = Depends(get_session)):
-    db.delete(_job_or_404(db, job_id))
+    job = _job_or_404(db, job_id)
+    n = db.scalar(select(func.count()).select_from(Application).where(Application.job_id == job_id))
+    if n:
+        raise HTTPException(409, f"{n} student{'s have' if n > 1 else ' has'} applied to this job. "
+                                 "Close it instead, so their applications are kept.")
+    for row in db.scalars(select(SavedJob).where(SavedJob.job_id == job_id)):
+        db.delete(row)
+    db.delete(job)
     db.commit()
     return {"deleted": True}
 

@@ -15,6 +15,7 @@ export const NAV: NavGroup[] = [
       { href: "/readiness", label: "Readiness report", icon: Gauge },
       { href: "/what-if", label: "What-if simulator", icon: SlidersHorizontal },
       { href: "/roadmap", label: "Roadmap", icon: Map },
+      { href: "/jobs", label: "Job Finder", icon: Briefcase },
       { href: "/profile", label: "My profile & CV", icon: FileText },
     ],
   },

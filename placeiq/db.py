@@ -5,6 +5,8 @@ Tables
   keyed by a salted hash of the roll number. No names, emails, phones or resume text.
 - student_accounts: student sign-ins (roll-number hash + password hash).
 - jobs: jobs and internships the placement cell posts for students to apply to.
+- saved_jobs, applications: students' bookmarks and applications (applications hold the
+  name, contact details and optional CV the student consented to share).
 - annotations: the hand-labelled resumes for the extraction study (§4.3). Text is stored
   with contact details stripped so the evaluation can be re-run when the extractor changes;
   delete the set once the study is reported.
@@ -14,7 +16,8 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from functools import lru_cache
 
-from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text, UniqueConstraint, create_engine
+from sqlalchemy import (Boolean, Date, DateTime, Float, Integer, LargeBinary, String, Text, UniqueConstraint,
+                        create_engine)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from placeiq.config import DATA_DIR, database_url
@@ -103,6 +106,51 @@ class Job(Base):
     def accepting(self, today: date) -> bool:
         """Open, and the deadline (if any) hasn't passed."""
         return self.status == "open" and (self.deadline is None or self.deadline >= today)
+
+
+class SavedJob(Base):
+    """A job a student bookmarked on the Job Finder."""
+    __tablename__ = "saved_jobs"
+    __table_args__ = (UniqueConstraint("student_hash", "job_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    student_hash: Mapped[str] = mapped_column(String(64), index=True)
+    job_id: Mapped[int] = mapped_column(Integer, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+APPLICATION_STATUSES = ("applied", "shortlisted", "interview", "selected", "rejected")
+
+
+class Application(Base):
+    """A student's application to a job. Unlike the rest of PlaceIQ this holds identifying details
+    (name, contact, roll number, optional CV), because a real application needs them; the student
+    consents when applying, and withdrawing deletes the row. The profile is a snapshot taken at
+    apply time, so later profile edits don't change what was submitted."""
+    __tablename__ = "applications"
+    __table_args__ = (UniqueConstraint("job_id", "student_hash"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[int] = mapped_column(Integer, index=True)
+    student_hash: Mapped[str] = mapped_column(String(64), index=True)
+    roll_number: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str] = mapped_column(String(80))
+    email: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str] = mapped_column(String(20))
+    batch_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    branch: Mapped[str] = mapped_column(String(16))
+    cgpa: Mapped[float] = mapped_column(Float)
+    active_backlogs: Mapped[int] = mapped_column(Integer)
+    internships: Mapped[int] = mapped_column(Integer)
+    projects: Mapped[int] = mapped_column(Integer)
+    certifications: Mapped[int] = mapped_column(Integer)
+    skills: Mapped[str] = mapped_column(Text, default="")
+    match_score: Mapped[float] = mapped_column(Float)
+    cv_filename: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    cv_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="applied", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
 class Annotation(Base):

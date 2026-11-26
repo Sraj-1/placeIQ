@@ -160,6 +160,21 @@ export interface JobInput {
 }
 export interface Job extends JobInput { id: number; accepting: boolean; created_at: string | null; updated_at: string | null }
 
+export type MatchBand = 'eligible' | 'almost' | 'stretch' | 'not_eligible'
+export interface JobMatch { score: number; band: MatchBand; have: string[]; missing: string[]; reasons: string[] }
+export type ApplicationStatus = 'applied' | 'shortlisted' | 'interview' | 'selected' | 'rejected'
+export interface FeedJob extends JobInput {
+  id: number
+  accepting: boolean
+  posted_at: string | null
+  match: JobMatch | null
+  saved: boolean
+  application_status: ApplicationStatus | null
+}
+export interface ApplicationInput {
+  name: string; email: string; phone: string; roll_number: string; batch_year: number | null; consent: boolean; profile: Profile
+}
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) { super(message); this.status = status }
@@ -208,6 +223,11 @@ export const api = {
   roadmap: (p: Profile) => call<Roadmap>('/roadmap', json(p)),
   saveStudent: (roll_number: string, batch_year: number, profile: Profile) =>
     call<{ saved: boolean; updated: boolean }>('/students', json({ roll_number, batch_year, consent: true, profile })),
+  jobFeed: (profile: Profile | null, batch_year: number | null) => call<FeedJob[]>('/jobs/feed', json({ profile, batch_year })),
+  saveJob: (id: number) => call<{ saved: boolean }>(`/jobs/${id}/save`, { method: 'POST' }),
+  unsaveJob: (id: number) => call<{ saved: boolean }>(`/jobs/${id}/save`, { method: 'DELETE' }),
+  applyJob: (id: number, a: ApplicationInput, cv: File | null) =>
+    call<{ applied: boolean; match: JobMatch }>(`/jobs/${id}/apply`, form(cv ? { data: JSON.stringify(a), cv } : { data: JSON.stringify(a) })),
   withdrawStudent: (roll_number: string, batch_year: number) =>
     call<{ deleted: boolean }>('/students/withdraw', json({ roll_number, batch_year })),
 }
@@ -275,6 +295,20 @@ export const profileApi = {
   clear: async (): Promise<void> => {
     const key = profileKey()
     try { if (key) localStorage.removeItem(key) } catch { /* ignore */ }
+  },
+}
+
+// Name, email and phone a student entered when applying, remembered (in this browser only) for
+// their next application.
+export type Contact = { name: string; email: string; phone: string }
+export const contactApi = {
+  get: (): Contact | null => {
+    const key = profileKey()
+    try { const raw = key && localStorage.getItem(key.replace('profile', 'contact')); return raw ? (JSON.parse(raw) as Contact) : null } catch { return null }
+  },
+  save: (c: Contact): void => {
+    const key = profileKey()
+    try { if (key) localStorage.setItem(key.replace('profile', 'contact'), JSON.stringify(c)) } catch { /* ignore */ }
   },
 }
 
