@@ -3,12 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type Health } from "@/lib/client";
 import { Notice } from "../ui";
 import { CellAnnotate } from "./annotate";
+import { CellApplicants } from "./applicants";
 import { CellDashboard } from "./dashboard";
 import { CellEvaluation } from "./evaluation";
 import { CellJobs } from "./jobs";
 import { CellModel } from "./model";
 
-export type CellKind = "dashboard" | "jobs" | "model" | "evaluation" | "annotate";
+export type CellKind = "dashboard" | "jobs" | "applicants" | "model" | "evaluation" | "annotate";
 
 /** Loads engine status and the skill taxonomy, then shows one placement-cell tool. */
 export function CellPage({ kind }: { kind: CellKind }) {
@@ -27,6 +28,7 @@ export function CellPage({ kind }: { kind: CellKind }) {
     <>
       {kind === "dashboard" && <CellDashboard taxonomy={taxonomy} />}
       {kind === "jobs" && <CellJobs taxonomy={taxonomy} />}
+      {kind === "applicants" && <CellApplicants />}
       {kind === "model" && <CellModel onTrained={loadHealth} trainingEnabled={health.training_enabled !== false} />}
       {kind === "evaluation" && <CellEvaluation />}
       {kind === "annotate" && <CellAnnotate taxonomy={taxonomy} />}

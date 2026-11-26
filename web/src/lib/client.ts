@@ -158,7 +158,7 @@ export interface JobInput {
   deadline: string | null
   status: 'open' | 'closed'
 }
-export interface Job extends JobInput { id: number; accepting: boolean; created_at: string | null; updated_at: string | null }
+export interface Job extends JobInput { id: number; accepting: boolean; created_at: string | null; updated_at: string | null; applicants?: Partial<Record<ApplicationStatus, number>> }
 
 export type MatchBand = 'eligible' | 'almost' | 'stretch' | 'not_eligible'
 export interface JobMatch { score: number; band: MatchBand; have: string[]; missing: string[]; reasons: string[] }
@@ -182,6 +182,12 @@ export interface MyApplication {
   job: (JobInput & { id: number; accepting: boolean }) | null
 }
 export interface SavedJobEntry extends JobInput { id: number; accepting: boolean; saved_at: string | null; match: JobMatch | null; applied: boolean }
+export interface Applicant {
+  id: number; job_id: number; status: ApplicationStatus; name: string; email: string; phone: string; roll_number: string
+  batch_year: number | null; branch: string; cgpa: number; active_backlogs: number; internships: number; projects: number
+  certifications: number; skills: string[]; match_score: number; have: string[]; missing: string[]
+  has_cv: boolean; cv_filename: string | null; applied_at: string | null; updated_at: string | null
+}
 export interface ApplicationInput {
   name: string; email: string; phone: string; roll_number: string; batch_year: number | null; consent: boolean; profile: Profile
 }
@@ -250,6 +256,11 @@ export const adminApi = {
   jobs: () => call<Job[]>('/admin/jobs'),
   createJob: (j: JobInput) => call<Job>('/admin/jobs', json(j)),
   updateJob: (id: number, j: JobInput) => call<Job>(`/admin/jobs/${id}`, json(j, 'PUT')),
+  jobApplications: (id: number) => call<{ job: Job; applications: Applicant[] }>(`/admin/jobs/${id}/applications`),
+  setApplicationStatus: (appId: number, status: ApplicationStatus) =>
+    call<{ id: number; status: ApplicationStatus }>(`/admin/applications/${appId}/status`, json({ status }, 'PUT')),
+  applicationCvUrl: (appId: number) => `/api/engine/admin/applications/${appId}/cv`,
+  applicationsCsvUrl: (jobId: number) => `/api/engine/admin/jobs/${jobId}/applications/export`,
   deleteJob: (id: number) => call<{ deleted: boolean }>(`/admin/jobs/${id}`, { method: 'DELETE' }),
   accountCount: () => call<{ accounts: number }>('/admin/accounts/count'),
   resetAccount: (roll_number: string) =>

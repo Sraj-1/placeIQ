@@ -1,9 +1,9 @@
 "use client";
 // PlaceIQ placement cell: post, edit, close and delete the jobs students apply to.
-import { Briefcase, CalendarDays, IndianRupee, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Briefcase, CalendarDays, IndianRupee, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { SkillPicker } from "@/components/skill-picker";
-import { Badge, Button, Card, Field, inputClass, Notice, Section } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Field, inputClass, Notice, Section } from "@/components/ui";
 import { adminApi, BRANCHES, type Job, type JobInput } from "@/lib/client";
 import { cn } from "@/lib/cn";
 
@@ -131,6 +131,7 @@ export function CellJobs({ taxonomy }: { taxonomy: Record<string, string> }) {
 
 function JobCard({ job: j, highlight, onEdit, onToggle, onDelete }: { job: Job; highlight: boolean; onEdit: () => void; onToggle: () => void; onDelete: () => void }) {
   const passed = j.status === "open" && !j.accepting;
+  const total = Object.values(j.applicants ?? {}).reduce((a, b) => a + (b ?? 0), 0);
   return (
     <Card className={cn(highlight && "ring-2 ring-brand/50", j.status === "closed" && "opacity-75")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -153,6 +154,7 @@ function JobCard({ job: j, highlight, onEdit, onToggle, onDelete }: { job: Job; 
       </div>
       <p className="mt-2 text-xs text-faint">Eligibility: {rulesText(j)}</p>
       <div className="mt-4 flex flex-wrap gap-2">
+        <ButtonLink href={`/cell/applicants?job=${j.id}`} size="sm"><Users className="size-3.5" />Applicants ({total})</ButtonLink>
         <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="size-3.5" />Edit</Button>
         <Button variant="outline" size="sm" onClick={onToggle}>{j.status === "open" ? "Close applications" : "Reopen"}</Button>
         <Button variant="outline" size="sm" className="text-red-700 dark:text-red-400" onClick={onDelete}><Trash2 className="size-3.5" />Delete</Button>

@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 
 from placeiq import config
 from placeiq.accounts import MIN_PASSWORD, burn_time, hash_password, verify_password
-from placeiq.api.schemas import (AnnotationIn, ApplicationIn, CohortRequest, Credentials, CvText, JobFeedRequest, JobIn,
+from placeiq.api.schemas import (AnnotationIn, ApplicationIn, ApplicationStatusIn, CohortRequest, Credentials, CvText, JobFeedRequest, JobIn,
                                  Profile, RollNumber, ScoreRequest, StudentKey, StudentSave)
 from placeiq.cohort import primary_gaps, summarize
 from placeiq.data.anonymize import hash_identifier, strip_contact_info
@@ -518,9 +518,13 @@ def _job_out(job: Job) -> dict:
 
 @admin.get("/jobs")
 def list_jobs(db: Session = Depends(get_session)):
-    """Every job, open ones first, newest first."""
+    """Every job, open ones first, newest first, with how many students applied (by status)."""
+    counts: dict[int, dict[str, int]] = {}
+    for job_id, status, n in db.execute(select(Application.job_id, Application.status, func.count())
+                                        .group_by(Application.job_id, Application.status)):
+        counts.setdefault(job_id, {})[status] = n
     jobs = db.scalars(select(Job).order_by(Job.status.desc(), Job.created_at.desc()))
-    return [_job_out(j) for j in jobs]
+    return [{**_job_out(j), "applicants": counts.get(j.id, {})} for j in jobs]
 
 
 @admin.post("/jobs")
@@ -552,6 +556,89 @@ def delete_job(job_id: int, db: Session = Depends(get_session)):
     db.delete(job)
     db.commit()
     return {"deleted": True}
+
+
+# ---------------------------------------------------------------- applicants (placement cell)
+def _application_or_404(db: Session, app_id: int) -> Application:
+    a = db.get(Application, app_id)
+    if a is None:
+        raise HTTPException(404, "Application not found.")
+    return a
+
+
+def _applicant_out(a: Application, job_skills: list[str]) -> dict:
+    skills = [x for x in a.skills.split(";") if x]
+    return {
+        "id": a.id, "job_id": a.job_id, "status": a.status, "name": a.name, "email": a.email, "phone": a.phone,
+        "roll_number": a.roll_number, "batch_year": a.batch_year, "branch": a.branch, "cgpa": a.cgpa,
+        "active_backlogs": a.active_backlogs, "internships": a.internships, "projects": a.projects,
+        "certifications": a.certifications, "skills": skills, "match_score": a.match_score,
+        "have": [s for s in job_skills if s in skills], "missing": [s for s in job_skills if s not in skills],
+        "has_cv": a.cv_data is not None, "cv_filename": a.cv_filename,
+        "applied_at": _iso(a.created_at), "updated_at": _iso(a.updated_at),
+    }
+
+
+def _job_applications(db: Session, job_id: int) -> list[Application]:
+    return list(db.scalars(select(Application).where(Application.job_id == job_id)
+                           .order_by(Application.match_score.desc(), Application.created_at)))
+
+
+@admin.get("/jobs/{job_id}/applications")
+def job_applications(job_id: int, db: Session = Depends(get_session)):
+    """A job's applicants, best skill match first (CVs are fetched separately)."""
+    job = _job_or_404(db, job_id)
+    skills = job.to_dict()["skills"]
+    return {"job": _job_out(job), "applications": [_applicant_out(a, skills) for a in _job_applications(db, job_id)]}
+
+
+@admin.put("/applications/{app_id}/status")
+def set_application_status(app_id: int, body: ApplicationStatusIn, db: Session = Depends(get_session)):
+    a = _application_or_404(db, app_id)
+    a.status = body.status
+    db.commit()
+    return {"id": a.id, "status": a.status, "updated_at": _iso(a.updated_at)}
+
+
+@admin.get("/applications/{app_id}/cv")
+def application_cv(app_id: int, db: Session = Depends(get_session)):
+    a = _application_or_404(db, app_id)
+    if a.cv_data is None:
+        raise HTTPException(404, "This applicant didn't attach a CV.")
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", f"{a.roll_number}_{a.cv_filename or 'cv.pdf'}")
+    return Response(a.cv_data, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
+
+
+_FORMULA_START = ("=", "+", "-", "@", chr(9), chr(13))  # tab and carriage return too
+
+
+def _csv_safe(v):
+    """Stop spreadsheet apps treating student-typed text as a formula (CSV injection)."""
+    return "'" + v if isinstance(v, str) and v[:1] in _FORMULA_START else v
+
+
+@admin.get("/jobs/{job_id}/applications/export")
+def export_applications(job_id: int, db: Session = Depends(get_session)):
+    job = _job_or_404(db, job_id)
+    skills = job.to_dict()["skills"]
+    rows = []
+    for a in _job_applications(db, job_id):
+        d = _applicant_out(a, skills)
+        rows.append({
+            "name": _csv_safe(d["name"]), "roll_number": d["roll_number"], "email": _csv_safe(d["email"]),
+            "phone": d["phone"], "branch": d["branch"], "batch_year": d["batch_year"], "cgpa": d["cgpa"],
+            "active_backlogs": d["active_backlogs"], "internships": d["internships"], "projects": d["projects"],
+            "certifications": d["certifications"], "skill_match_pct": round(d["match_score"] * 100),
+            "missing_skills": ";".join(d["missing"]), "skills": ";".join(d["skills"]), "status": d["status"],
+            "cv_attached": "yes" if d["has_cv"] else "no", "applied_at": d["applied_at"],
+        })
+    cols = ["name", "roll_number", "email", "phone", "branch", "batch_year", "cgpa", "active_backlogs", "internships",
+            "projects", "certifications", "skill_match_pct", "missing_skills", "skills", "status", "cv_attached",
+            "applied_at"]
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", f"{job.company}_{job.title}").strip("_")[:60] or f"job_{job_id}"
+    return Response(pd.DataFrame(rows, columns=cols).to_csv(index=False), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="applicants_{slug}.csv"'})
 
 
 @admin.get("/companies")

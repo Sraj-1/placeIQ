@@ -142,6 +142,10 @@ class ApplicationIn(BaseModel):
         return v.strip() if isinstance(v, str) else v
 
 
+class ApplicationStatusIn(BaseModel):
+    status: Literal["applied", "shortlisted", "interview", "selected", "rejected"]
+
+
 class AnnotationIn(BaseModel):
     text: str = Field(min_length=20, max_length=50_000)
     gold_skills: list[str] = Field(default_factory=list, max_length=300)
