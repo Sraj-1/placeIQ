@@ -5,9 +5,10 @@ import { Notice } from "../ui";
 import { CellAnnotate } from "./annotate";
 import { CellDashboard } from "./dashboard";
 import { CellEvaluation } from "./evaluation";
+import { CellJobs } from "./jobs";
 import { CellModel } from "./model";
 
-export type CellKind = "dashboard" | "model" | "evaluation" | "annotate";
+export type CellKind = "dashboard" | "jobs" | "model" | "evaluation" | "annotate";
 
 /** Loads engine status and the skill taxonomy, then shows one placement-cell tool. */
 export function CellPage({ kind }: { kind: CellKind }) {
@@ -25,6 +26,7 @@ export function CellPage({ kind }: { kind: CellKind }) {
   return (
     <>
       {kind === "dashboard" && <CellDashboard taxonomy={taxonomy} />}
+      {kind === "jobs" && <CellJobs taxonomy={taxonomy} />}
       {kind === "model" && <CellModel onTrained={loadHealth} trainingEnabled={health.training_enabled !== false} />}
       {kind === "evaluation" && <CellEvaluation />}
       {kind === "annotate" && <CellAnnotate taxonomy={taxonomy} />}

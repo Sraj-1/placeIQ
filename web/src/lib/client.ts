@@ -142,6 +142,24 @@ export interface AnnotationSummary { resume_id: string; n_gold: number; annotato
 export interface AnnotationDetail { resume_id: string; text: string; gold_skills: string[]; annotator: string; predicted: SkillMatch[] }
 export interface Company { name: string; min_cgpa: number; max_active_backlogs: number; branches: string[]; required_skills_any: string[] }
 
+export type JobType = 'full_time' | 'internship'
+export interface JobInput {
+  company: string
+  title: string
+  location: string
+  job_type: JobType
+  salary: string
+  description: string
+  skills: string[]
+  min_cgpa: number
+  max_backlogs: number | null
+  branches: string[]
+  batch_years: number[]
+  deadline: string | null
+  status: 'open' | 'closed'
+}
+export interface Job extends JobInput { id: number; accepting: boolean; created_at: string | null; updated_at: string | null }
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) { super(message); this.status = status }
@@ -195,6 +213,10 @@ export const api = {
 }
 
 export const adminApi = {
+  jobs: () => call<Job[]>('/admin/jobs'),
+  createJob: (j: JobInput) => call<Job>('/admin/jobs', json(j)),
+  updateJob: (id: number, j: JobInput) => call<Job>(`/admin/jobs/${id}`, json(j, 'PUT')),
+  deleteJob: (id: number) => call<{ deleted: boolean }>(`/admin/jobs/${id}`, { method: 'DELETE' }),
   accountCount: () => call<{ accounts: number }>('/admin/accounts/count'),
   resetAccount: (roll_number: string) =>
     call<{ reset: boolean }>('/admin/accounts/reset', json({ roll_number })),

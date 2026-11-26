@@ -20,7 +20,7 @@ import io
 import json
 import re
 import secrets
-from datetime import timezone
+from datetime import date, timezone
 
 import pandas as pd
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -31,11 +31,11 @@ from sqlalchemy.orm import Session
 
 from placeiq import config
 from placeiq.accounts import MIN_PASSWORD, burn_time, hash_password, verify_password
-from placeiq.api.schemas import (AnnotationIn, CohortRequest, Credentials, CvText, Profile, RollNumber, ScoreRequest,
-                                 StudentKey, StudentSave)
+from placeiq.api.schemas import (AnnotationIn, CohortRequest, Credentials, CvText, JobIn, Profile, RollNumber,
+                                 ScoreRequest, StudentKey, StudentSave)
 from placeiq.cohort import primary_gaps, summarize
 from placeiq.data.anonymize import hash_identifier, strip_contact_info
-from placeiq.db import Annotation, StudentAccount, StudentRecord, _now, get_session
+from placeiq.db import Annotation, Job, StudentAccount, StudentRecord, _now, get_session
 from placeiq.eligibility.filter import eligible_companies, load_companies
 from placeiq.explain.guidance import load_bundle, report
 from placeiq.explain.whatif import score, suggestions
@@ -354,6 +354,59 @@ def reset_account(body: RollNumber, db: Session = Depends(get_session)):
 @admin.get("/accounts/count")
 def account_count(db: Session = Depends(get_session)):
     return {"accounts": db.scalar(select(func.count()).select_from(StudentAccount))}
+
+
+# ---------------------------------------------------------------- jobs (placement cell)
+def _job_or_404(db: Session, job_id: int) -> Job:
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found.")
+    return job
+
+
+def _apply_job_fields(job: Job, body: JobIn) -> None:
+    for k in ("company", "title", "location", "job_type", "salary", "description", "min_cgpa", "max_backlogs",
+              "deadline", "status"):
+        setattr(job, k, getattr(body, k))
+    job.skills = ";".join(body.skills)
+    job.branches = ";".join(body.branches)
+    job.batch_years = ";".join(str(y) for y in body.batch_years)
+
+
+def _job_out(job: Job) -> dict:
+    return {**job.to_dict(), "accepting": job.accepting(date.today()),
+            "created_at": _iso(job.created_at), "updated_at": _iso(job.updated_at)}
+
+
+@admin.get("/jobs")
+def list_jobs(db: Session = Depends(get_session)):
+    """Every job, open ones first, newest first."""
+    jobs = db.scalars(select(Job).order_by(Job.status.desc(), Job.created_at.desc()))
+    return [_job_out(j) for j in jobs]
+
+
+@admin.post("/jobs")
+def create_job(body: JobIn, db: Session = Depends(get_session)):
+    job = Job()
+    _apply_job_fields(job, body)
+    db.add(job)
+    db.commit()
+    return _job_out(job)
+
+
+@admin.put("/jobs/{job_id}")
+def update_job(job_id: int, body: JobIn, db: Session = Depends(get_session)):
+    job = _job_or_404(db, job_id)
+    _apply_job_fields(job, body)
+    db.commit()
+    return _job_out(job)
+
+
+@admin.delete("/jobs/{job_id}")
+def delete_job(job_id: int, db: Session = Depends(get_session)):
+    db.delete(_job_or_404(db, job_id))
+    db.commit()
+    return {"deleted": True}
 
 
 @admin.get("/companies")
