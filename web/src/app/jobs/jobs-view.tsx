@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { rulesText } from "@/components/cell/jobs";
 import { EngineStatus, Loading } from "@/components/status";
-import { Badge, Button, Card, Field, inputClass, Notice } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Field, inputClass, Notice } from "@/components/ui";
 import { useStudent } from "@/components/use-student";
 import { api, contactApi, type ApplicationStatus, type FeedJob, type MatchBand, type Profile } from "@/lib/client";
 import { cn } from "@/lib/cn";
@@ -15,7 +15,7 @@ const BANDS: { id: MatchBand; label: string; icon: string; tone: "good" | "warn"
   { id: "stretch", label: "Stretch", icon: "🔴", tone: "bad" },
   { id: "not_eligible", label: "Not eligible", icon: "⛔", tone: "muted" },
 ];
-const BAND = Object.fromEntries(BANDS.map((b) => [b.id, b])) as Record<MatchBand, (typeof BANDS)[number]>;
+export const BAND = Object.fromEntries(BANDS.map((b) => [b.id, b])) as Record<MatchBand, (typeof BANDS)[number]>;
 const RANK: Record<MatchBand, number> = { eligible: 0, almost: 1, stretch: 2, not_eligible: 3 };
 
 export const STATUS_LABEL: Record<ApplicationStatus, { label: string; tone: "info" | "good" | "warn" | "bad" | "muted" }> = {
@@ -188,7 +188,10 @@ function JobCard({ job: j, canApply, applying, form, onApply, onSave }: {
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {status ? (
-          <Badge tone={status.tone} className="min-h-10 px-3 text-sm"><Check className="size-4" />{status.label}</Badge>
+          <>
+            <Badge tone={status.tone} className="min-h-10 px-3 text-sm"><Check className="size-4" />{status.label}</Badge>
+            <ButtonLink href="/applications" variant="ghost" size="sm">View in My applications</ButtonLink>
+          </>
         ) : !j.accepting ? (
           <Badge>Applications closed</Badge>
         ) : (

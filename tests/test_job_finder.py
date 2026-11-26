@@ -135,3 +135,56 @@ def test_delete_job_clears_bookmarks(client, me):
     job = _post(client)
     client.post(f"/api/jobs/{job['id']}/save", headers={"x-placeiq-student": me})
     assert client.delete(f"/api/admin/jobs/{job['id']}").json()["deleted"]
+
+
+# ------------------------------------------------------------------ My applications (step 3)
+def _mine(client, me, profile=PROFILE):
+    return client.post("/api/jobs/mine", json={"profile": profile, "batch_year": YEAR},
+                       headers={"x-placeiq-student": me}).json()
+
+
+def test_my_applications_and_saved(client, me):
+    a = _post(client, title="Applied job")
+    b = _post(client, title="Saved job", skills=["python", "docker"])
+    h = {"x-placeiq-student": me}
+    assert _mine(client, me) == {"applications": [], "saved": []}
+    _apply(client, me, a["id"], cv=b"%PDF-1.4 x")
+    client.post(f"/api/jobs/{b['id']}/save", headers=h)
+    client.post(f"/api/jobs/{a['id']}/save", headers=h)
+
+    mine = _mine(client, me)
+    [app] = mine["applications"]
+    assert app["job"]["title"] == "Applied job" and app["status"] == "applied" and app["match_score"] == 0.8
+    assert app["cv_filename"] == "cv.pdf" and app["shared"]["email"] == "test@example.com"
+    saved = {s["title"]: s for s in mine["saved"]}
+    assert saved["Saved job"]["match"]["band"] == "almost" and saved["Saved job"]["applied"] is False
+    assert saved["Applied job"]["applied"] is True
+
+    # closing a saved job keeps it listed, marked as not accepting
+    client.put(f"/api/admin/jobs/{b['id']}", json={**JOB, "title": "Saved job", "status": "closed"})
+    assert {s["title"]: s["accepting"] for s in _mine(client, me)["saved"]}["Saved job"] is False
+
+    # another student sees none of it
+    other = client.post("/api/auth/register", json={"roll_number": "R00002", "password": "password2"}).json()["student_hash"]
+    assert _mine(client, other) == {"applications": [], "saved": []}
+    assert client.post("/api/jobs/mine", json={}).status_code == 401
+
+
+def test_withdraw(client, me):
+    from placeiq.db import Application, session_factory
+    job = _post(client)
+    h = {"x-placeiq-student": me}
+    assert client.delete(f"/api/jobs/{job['id']}/apply", headers=h).status_code == 404
+    _apply(client, me, job["id"])
+    other = client.post("/api/auth/register", json={"roll_number": "R00002", "password": "password2"}).json()["student_hash"]
+    assert client.delete(f"/api/jobs/{job['id']}/apply", headers={"x-placeiq-student": other}).status_code == 404
+    assert client.delete(f"/api/jobs/{job['id']}/apply", headers=h).json()["withdrawn"]
+    assert _mine(client, me)["applications"] == []
+    assert _apply(client, me, job["id"]).status_code == 200            # can apply again after withdrawing
+
+    # once the cell has moved it on, it can't be withdrawn here
+    with session_factory()() as s:
+        s.query(Application).update({"status": "shortlisted"})
+        s.commit()
+    assert client.delete(f"/api/jobs/{job['id']}/apply", headers=h).status_code == 409
+    assert _mine(client, me)["applications"][0]["status"] == "shortlisted"

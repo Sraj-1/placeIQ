@@ -1,4 +1,4 @@
-import { BarChart3, Briefcase, LogIn, Brain, ClipboardCheck, FileText, Gauge, Home, Info, Map, SlidersHorizontal, Tags } from "lucide-react";
+import { BarChart3, Briefcase, ClipboardList, LogIn, Brain, ClipboardCheck, FileText, Gauge, Home, Info, Map, SlidersHorizontal, Tags } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export type NavItem = { href: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
@@ -16,6 +16,7 @@ export const NAV: NavGroup[] = [
       { href: "/what-if", label: "What-if simulator", icon: SlidersHorizontal },
       { href: "/roadmap", label: "Roadmap", icon: Map },
       { href: "/jobs", label: "Job Finder", icon: Briefcase },
+      { href: "/applications", label: "My applications", icon: ClipboardList },
       { href: "/profile", label: "My profile & CV", icon: FileText },
     ],
   },

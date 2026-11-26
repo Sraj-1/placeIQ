@@ -332,6 +332,55 @@ async def apply_job(job_id: int, data: str = Form(...), cv: UploadFile | None = 
     return {"applied": True, "status": "applied", "match": m}
 
 
+@api.post("/jobs/mine")
+def my_jobs(body: JobFeedRequest, me: str = Depends(_student), db: Session = Depends(get_session)):
+    """The student's applications (newest first, with the job and status) and saved jobs (scored
+    against their profile, like the feed; closed ones included so they can see what happened)."""
+    today = date.today()
+    profile = body.profile.model_dump() if body.profile else None
+    apps = list(db.scalars(select(Application).where(Application.student_hash == me)
+                           .order_by(Application.created_at.desc())))
+    jobs = {j.id: j for j in db.scalars(select(Job).where(Job.id.in_(
+        [a.job_id for a in apps] + list(db.scalars(select(SavedJob.job_id).where(SavedJob.student_hash == me))))))}
+    applications = []
+    for a in apps:
+        job = jobs.get(a.job_id)
+        applications.append({
+            "job_id": a.job_id, "status": a.status, "applied_at": _iso(a.created_at), "updated_at": _iso(a.updated_at),
+            "match_score": a.match_score, "cv_filename": a.cv_filename,
+            "shared": {"name": a.name, "email": a.email, "phone": a.phone, "roll_number": a.roll_number,
+                       "batch_year": a.batch_year, "branch": a.branch, "cgpa": a.cgpa,
+                       "active_backlogs": a.active_backlogs, "skills": [x for x in a.skills.split(";") if x]},
+            "job": {**job.to_dict(), "accepting": job.accepting(today)} if job else None,
+        })
+    applied_ids = {a.job_id for a in apps}
+    saved = []
+    for sj in db.scalars(select(SavedJob).where(SavedJob.student_hash == me).order_by(SavedJob.created_at.desc())):
+        job = jobs.get(sj.job_id)
+        if job is None:
+            continue
+        d = job.to_dict()
+        saved.append({**d, "accepting": job.accepting(today), "saved_at": _iso(sj.created_at),
+                      "match": job_match(d, profile, body.batch_year) if profile else None,
+                      "applied": job.id in applied_ids})
+    return {"applications": applications, "saved": saved}
+
+
+@api.delete("/jobs/{job_id}/apply")
+def withdraw_application(job_id: int, me: str = Depends(_student), db: Session = Depends(get_session)):
+    """Withdraw (delete) an application, with everything it shared. Only while it's still at
+    "applied": once the placement cell has moved it on, the student contacts them instead."""
+    a = db.scalar(select(Application).where(Application.job_id == job_id, Application.student_hash == me))
+    if a is None:
+        raise HTTPException(404, "You haven't applied to this job.")
+    if a.status != "applied":
+        raise HTTPException(409, "The placement cell is already processing this application, so it can't be "
+                                 "withdrawn here. Please contact them.")
+    db.delete(a)
+    db.commit()
+    return {"withdrawn": True}
+
+
 # ---------------------------------------------------------------- admin
 admin = APIRouter(prefix="/admin")
 

@@ -171,6 +171,17 @@ export interface FeedJob extends JobInput {
   saved: boolean
   application_status: ApplicationStatus | null
 }
+export interface MyApplication {
+  job_id: number
+  status: ApplicationStatus
+  applied_at: string | null
+  updated_at: string | null
+  match_score: number
+  cv_filename: string | null
+  shared: { name: string; email: string; phone: string; roll_number: string; batch_year: number | null; branch: string; cgpa: number; active_backlogs: number; skills: string[] }
+  job: (JobInput & { id: number; accepting: boolean }) | null
+}
+export interface SavedJobEntry extends JobInput { id: number; accepting: boolean; saved_at: string | null; match: JobMatch | null; applied: boolean }
 export interface ApplicationInput {
   name: string; email: string; phone: string; roll_number: string; batch_year: number | null; consent: boolean; profile: Profile
 }
@@ -228,6 +239,9 @@ export const api = {
   unsaveJob: (id: number) => call<{ saved: boolean }>(`/jobs/${id}/save`, { method: 'DELETE' }),
   applyJob: (id: number, a: ApplicationInput, cv: File | null) =>
     call<{ applied: boolean; match: JobMatch }>(`/jobs/${id}/apply`, form(cv ? { data: JSON.stringify(a), cv } : { data: JSON.stringify(a) })),
+  myJobs: (profile: Profile | null, batch_year: number | null) =>
+    call<{ applications: MyApplication[]; saved: SavedJobEntry[] }>('/jobs/mine', json({ profile, batch_year })),
+  withdrawApplication: (jobId: number) => call<{ withdrawn: boolean }>(`/jobs/${jobId}/apply`, { method: 'DELETE' }),
   withdrawStudent: (roll_number: string, batch_year: number) =>
     call<{ deleted: boolean }>('/students/withdraw', json({ roll_number, batch_year })),
 }
